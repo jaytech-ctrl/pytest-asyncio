@@ -1,0 +1,185 @@
+[35mdocs/how-to-guides/change_default_fixture_loop.rst[m[36m:[m[32m4[m[36m:[mThe :ref:`configuration/[1;31masyncio_default_fixture_loop_scope[m` configuration option sets the default event loop scope for asynchronous fixtures. The following code snippets configure all fixtures to run in a session-scoped loop by default:
+[35mdocs/how-to-guides/change_default_fixture_loop.rst[m[36m:[m[32m13[m[36m:[m         [1;31masyncio_default_fixture_loop_scope[m = session
+[35mdocs/how-to-guides/change_default_fixture_loop.rst[m[36m:[m[32m20[m[36m:[m         [1;31masyncio_default_fixture_loop_scope[m = "session"
+[35mdocs/how-to-guides/change_default_fixture_loop.rst[m[36m:[m[32m27[m[36m:[m         [1;31masyncio_default_fixture_loop_scope[m = session
+[35mdocs/how-to-guides/change_default_fixture_loop.rst[m[36m:[m[32m29[m[36m:[mPlease refer to :ref:`configuration/[1;31masyncio_default_fixture_loop_scope[m` for other valid scopes.
+[35mdocs/how-to-guides/migrate_from_0_21.rst[m[36m:[m[32m14[m[36m:[m1. For all tests and fixtures affected by the re-implemented *event_loop* fixture, configure the *loop_scope* for async tests and fixtures to match the *event_loop* fixture scope. This can be done for each test and fixture individually using either the ``pytest.mark.asyncio(loop_scope="…")`` marker for async tests or ``@pytest_asyncio.fixture(loop_scope="…")`` for async fixtures. Alternatively, you can set the default loop scope for fixtures using the :ref:`[1;31masyncio_default_fixture_loop_scope[m <configuration/[1;31masyncio_default_fixture_loop_scope[m>` configuration option. Snippets to mark all tests with the same *asyncio* marker, thus sharing the same loop scope, are present in the how-to section of the documentation. Depending on the homogeneity of your test suite, you may want a mixture of explicit decorators and default settings.
+[35mdocs/how-to-guides/migrate_from_0_21.rst[m[36m:[m[32m17[m[36m:[mIf you haven't set the *[1;31masyncio_default_fixture_loop_scope[m* configuration option, yet, set it to *function* to silence the deprecation warning.
+[35mdocs/how-to-guides/migrate_from_0_23.rst[m[36m:[m[32m8[m[36m:[m1. Explicitly set the *loop_scope* of async fixtures by replacing occurrences of ``@pytest.fixture(scope="…")`` and ``@pytest_asyncio.fixture(scope="…")`` with ``@pytest_asyncio.fixture(loop_scope="…", scope="…")`` such that *loop_scope* and *scope* are the same. If you use auto mode, resolve all import errors from missing imports of *pytest_asyncio*. If your async fixtures all use the same *loop_scope*, you may choose to set the *[1;31masyncio_default_fixture_loop_scope[m* configuration option to that loop scope, instead.
+[35mdocs/how-to-guides/migrate_from_0_23.rst[m[36m:[m[32m9[m[36m:[m2. If you haven't set *[1;31masyncio_default_fixture_loop_scope[m*, set it to *function* to address the deprecation warning about the unset configuration option.
+[35mdocs/reference/changelog.rst[m[36m:[m[32m35[m[36m:[m- Improved the readability of the warning message that is displayed when ``[1;31masyncio_default_fixture_loop_scope[m`` is unset (`#1298 <https://github.com/pytest-dev/pytest-asyncio/issues/1298>`_)
+[35mdocs/reference/changelog.rst[m[36m:[m[32m82[m[36m:[m- A ``pytest.UsageError`` for invalid configuration values of ``[1;31masyncio_default_fixture_loop_scope[m`` and ``asyncio_default_test_loop_scope``. (`#1189 <https://github.com/pytest-dev/pytest-asyncio/issues/1189>`_)
+[35mdocs/reference/changelog.rst[m[36m:[m[32m192[m[36m:[m- Verbose log displays correct parameter name: [1;31masyncio_default_fixture_loop_scope[m `#990 <https://github.com/pytest-dev/pytest-asyncio/pull/990>`_
+[35mdocs/reference/changelog.rst[m[36m:[m[32m204[m[36m:[m- Added the ``[1;31masyncio_default_fixture_loop_scope[m`` configuration option `c74d1c3 <https://github.com/pytest-dev/pytest-asyncio/commit/c74d1c3fba1afac0b8316763257c915bfba5f5e3>`_
+[35mdocs/reference/configuration.rst[m[36m:[m[32m5[m[36m:[m.. _configuration/[1;31masyncio_default_fixture_loop_scope[m:
+[35mdocs/reference/configuration.rst[m[36m:[m[32m7[m[36m:[m[1;31masyncio_default_fixture_loop_scope[m
+[35mpyproject.toml[m[36m:[m[32m156[m[36m:[m[1;31masyncio_default_fixture_loop_scope[m = "function"
+[35mpytest_asyncio/plugin.py[m[36m:[m[32m138[m[36m:[m        "[1;31masyncio_default_fixture_loop_scope[m",
+[35mpytest_asyncio/plugin.py[m[36m:[m[32m276[m[36m:[mThe configuration option "[1;31masyncio_default_fixture_loop_scope[m" is unset.
+[35mpytest_asyncio/plugin.py[m[36m:[m[32m297[m[36m:[m    default_fixture_loop_scope = config.getini("[1;31masyncio_default_fixture_loop_scope[m")
+[35mpytest_asyncio/plugin.py[m[36m:[m[32m298[m[36m:[m    _validate_scope(default_fixture_loop_scope, "[1;31masyncio_default_fixture_loop_scope[m")
+[35mpytest_asyncio/plugin.py[m[36m:[m[32m317[m[36m:[m    default_fixture_loop_scope = config.getini("[1;31masyncio_default_fixture_loop_scope[m")
+[35mpytest_asyncio/plugin.py[m[36m:[m[32m322[m[36m:[m        f"[1;31masyncio_default_fixture_loop_scope[m={default_fixture_loop_scope}",
+[35mpytest_asyncio/plugin.py[m[36m:[m[32m928[m[36m:[m    default_loop_scope = request.config.getini("[1;31masyncio_default_fixture_loop_scope[m")
+[35mtests/async_fixtures/test_async_fixtures_contextvars.py[m[36m:[m[32m33[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/async_fixtures/test_async_fixtures_contextvars.py[m[36m:[m[32m53[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/async_fixtures/test_async_fixtures_contextvars.py[m[36m:[m[32m73[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/async_fixtures/test_async_fixtures_contextvars.py[m[36m:[m[32m92[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/async_fixtures/test_async_fixtures_contextvars.py[m[36m:[m[32m116[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/async_fixtures/test_async_fixtures_contextvars.py[m[36m:[m[32m140[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/async_fixtures/test_async_fixtures_contextvars.py[m[36m:[m[32m163[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/async_fixtures/test_async_fixtures_contextvars.py[m[36m:[m[32m184[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/async_fixtures/test_async_fixtures_contextvars.py[m[36m:[m[32m207[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/async_fixtures/test_shared_module_fixture.py[m[36m:[m[32m9[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/hypothesis/test_base.py[m[36m:[m[32m14[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/hypothesis/test_base.py[m[36m:[m[32m29[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/hypothesis/test_base.py[m[36m:[m[32m44[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/hypothesis/test_base.py[m[36m:[m[32m61[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/hypothesis/test_base.py[m[36m:[m[32m80[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_class_scope.py[m[36m:[m[32m36[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_class_scope.py[m[36m:[m[32m59[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_class_scope.py[m[36m:[m[32m79[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_class_scope.py[m[36m:[m[32m104[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_class_scope.py[m[36m:[m[32m146[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_class_scope.py[m[36m:[m[32m181[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_class_scope.py[m[36m:[m[32m207[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_class_scope.py[m[36m:[m[32m237[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_class_scope.py[m[36m:[m[32m269[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_function_scope.py[m[36m:[m[32m10[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_function_scope.py[m[36m:[m[32m32[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_function_scope.py[m[36m:[m[32m54[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_function_scope.py[m[36m:[m[32m67[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_function_scope.py[m[36m:[m[32m83[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_function_scope.py[m[36m:[m[32m119[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_function_scope.py[m[36m:[m[32m160[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_function_scope.py[m[36m:[m[32m186[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_function_scope.py[m[36m:[m[32m205[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_function_scope.py[m[36m:[m[32m232[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_function_scope.py[m[36m:[m[32m263[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_function_scope.py[m[36m:[m[32m278[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_invalid_arguments.py[m[36m:[m[32m11[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_invalid_arguments.py[m[36m:[m[32m27[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_invalid_arguments.py[m[36m:[m[32m45[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_invalid_arguments.py[m[36m:[m[32m63[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_invalid_arguments.py[m[36m:[m[32m85[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_mixed_scope.py[m[36m:[m[32m9[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_module_scope.py[m[36m:[m[32m10[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_module_scope.py[m[36m:[m[32m39[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_module_scope.py[m[36m:[m[32m95[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_module_scope.py[m[36m:[m[32m130[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_module_scope.py[m[36m:[m[32m157[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_module_scope.py[m[36m:[m[32m187[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_module_scope.py[m[36m:[m[32m216[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_module_scope.py[m[36m:[m[32m245[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_module_scope.py[m[36m:[m[32m276[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_package_scope.py[m[36m:[m[32m12[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_package_scope.py[m[36m:[m[32m66[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_package_scope.py[m[36m:[m[32m127[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_package_scope.py[m[36m:[m[32m165[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_package_scope.py[m[36m:[m[32m206[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_package_scope.py[m[36m:[m[32m235[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_package_scope.py[m[36m:[m[32m265[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_package_scope.py[m[36m:[m[32m294[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_session_scope.py[m[36m:[m[32m11[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_session_scope.py[m[36m:[m[32m67[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_session_scope.py[m[36m:[m[32m128[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_session_scope.py[m[36m:[m[32m167[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_session_scope.py[m[36m:[m[32m209[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_session_scope.py[m[36m:[m[32m238[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_session_scope.py[m[36m:[m[32m267[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_session_scope.py[m[36m:[m[32m297[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_session_scope.py[m[36m:[m[32m326[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_session_scope.py[m[36m:[m[32m356[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/markers/test_session_scope.py[m[36m:[m[32m387[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/modes/test_auto_mode.py[m[36m:[m[32m9[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/modes/test_auto_mode.py[m[36m:[m[32m26[m[36m:[m            [1;31masyncio_default_fixture_loop_scope[m = function
+[35mtests/modes/test_auto_mode.py[m[36m:[m[32m43[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/modes/test_auto_mode.py[m[36m:[m[32m64[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/modes/test_auto_mode.py[m[36m:[m[32m88[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/modes/test_auto_mode.py[m[36m:[m[32m106[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/modes/test_strict_mode.py[m[36m:[m[32m10[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/modes/test_strict_mode.py[m[36m:[m[32m28[m[36m:[m            [1;31masyncio_default_fixture_loop_scope[m = function
+[35mtests/modes/test_strict_mode.py[m[36m:[m[32m46[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/modes/test_strict_mode.py[m[36m:[m[32m71[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/modes/test_strict_mode.py[m[36m:[m[32m91[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/modes/test_strict_mode.py[m[36m:[m[32m122[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/modes/test_strict_mode.py[m[36m:[m[32m169[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_asyncio_debug.py[m[36m:[m[32m10[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_asyncio_debug.py[m[36m:[m[32m27[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_asyncio_debug.py[m[36m:[m[32m47[m[36m:[m            [1;31masyncio_default_fixture_loop_scope[m = function
+[35mtests/test_asyncio_debug.py[m[36m:[m[32m72[m[36m:[m            [1;31masyncio_default_fixture_loop_scope[m = function
+[35mtests/test_asyncio_debug.py[m[36m:[m[32m92[m[36m:[m        "[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function\nasyncio_debug = false"
+[35mtests/test_asyncio_debug.py[m[36m:[m[32m111[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_asyncio_debug.py[m[36m:[m[32m128[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_asyncio_debug.py[m[36m:[m[32m153[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_asyncio_fixture.py[m[36m:[m[32m50[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_asyncio_mark.py[m[36m:[m[32m9[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_asyncio_mark.py[m[36m:[m[32m27[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_asyncio_mark.py[m[36m:[m[32m45[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_asyncio_mark.py[m[36m:[m[32m60[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_asyncio_mark.py[m[36m:[m[32m79[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_asyncio_mark.py[m[36m:[m[32m96[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_asyncio_mark.py[m[36m:[m[32m116[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_asyncio_mark.py[m[36m:[m[32m135[m[36m:[m            [1;31masyncio_default_fixture_loop_scope[m = function
+[35mtests/test_asyncio_mark.py[m[36m:[m[32m165[m[36m:[m            [1;31masyncio_default_fixture_loop_scope[m = function
+[35mtests/test_doctest.py[m[36m:[m[32m9[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_doctest.py[m[36m:[m[32m24[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_event_loop_fixture.py[m[36m:[m[32m11[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_event_loop_fixture.py[m[36m:[m[32m34[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_event_loop_fixture.py[m[36m:[m[32m65[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_fixture_loop_scopes.py[m[36m:[m[32m16[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_fixture_loop_scopes.py[m[36m:[m[32m45[m[36m:[m            [1;31masyncio_default_fixture_loop_scope[m = {default_loop_scope}
+[35mtests/test_fixture_loop_scopes.py[m[36m:[m[32m69[m[36m:[m            [1;31masyncio_default_fixture_loop_scope[m = class
+[35mtests/test_fixture_loop_scopes.py[m[36m:[m[32m94[m[36m:[m            [1;31masyncio_default_fixture_loop_scope[m = package
+[35mtests/test_fixture_loop_scopes.py[m[36m:[m[32m119[m[36m:[m        [1;31masyncio_default_fixture_loop_scope[m = invalid_scope
+[35mtests/test_fixture_loop_scopes.py[m[36m:[m[32m125[m[36m:[m            "[1;31masyncio_default_fixture_loop_scope[m. Valid scopes are: "
+[35mtests/test_import.py[m[36m:[m[32m9[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_import.py[m[36m:[m[32m21[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_import.py[m[36m:[m[32m36[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_is_async_test.py[m[36m:[m[32m9[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_is_async_test.py[m[36m:[m[32m30[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_is_async_test.py[m[36m:[m[32m52[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_is_async_test.py[m[36m:[m[32m73[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_loop_factory_parametrization.py[m[36m:[m[32m16[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_loop_factory_parametrization.py[m[36m:[m[32m39[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_loop_factory_parametrization.py[m[36m:[m[32m64[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_loop_factory_parametrization.py[m[36m:[m[32m98[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_loop_factory_parametrization.py[m[36m:[m[32m127[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_loop_factory_parametrization.py[m[36m:[m[32m158[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_loop_factory_parametrization.py[m[36m:[m[32m207[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_loop_factory_parametrization.py[m[36m:[m[32m237[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_loop_factory_parametrization.py[m[36m:[m[32m278[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_loop_factory_parametrization.py[m[36m:[m[32m317[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_loop_factory_parametrization.py[m[36m:[m[32m370[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_loop_factory_parametrization.py[m[36m:[m[32m404[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_loop_factory_parametrization.py[m[36m:[m[32m428[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_loop_factory_parametrization.py[m[36m:[m[32m457[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_loop_factory_parametrization.py[m[36m:[m[32m493[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_loop_factory_parametrization.py[m[36m:[m[32m519[m[36m:[m        "[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function\n"
+[35mtests/test_loop_factory_parametrization.py[m[36m:[m[32m559[m[36m:[m        "[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function\n"
+[35mtests/test_loop_factory_parametrization.py[m[36m:[m[32m604[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_loop_factory_parametrization.py[m[36m:[m[32m627[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_loop_factory_parametrization.py[m[36m:[m[32m666[m[36m:[m        "[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function\n"
+[35mtests/test_loop_factory_parametrization.py[m[36m:[m[32m705[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_loop_factory_parametrization.py[m[36m:[m[32m749[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_loop_factory_parametrization.py[m[36m:[m[32m803[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_loop_factory_parametrization.py[m[36m:[m[32m852[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_loop_factory_parametrization.py[m[36m:[m[32m889[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_set_event_loop.py[m[36m:[m[32m36[m[36m:[m            [1;31masyncio_default_fixture_loop_scope[m = function
+[35mtests/test_set_event_loop.py[m[36m:[m[32m77[m[36m:[m            [1;31masyncio_default_fixture_loop_scope[m = function
+[35mtests/test_set_event_loop.py[m[36m:[m[32m107[m[36m:[m            [1;31masyncio_default_fixture_loop_scope[m = function
+[35mtests/test_set_event_loop.py[m[36m:[m[32m159[m[36m:[m            [1;31masyncio_default_fixture_loop_scope[m = function
+[35mtests/test_set_event_loop.py[m[36m:[m[32m213[m[36m:[m            [1;31masyncio_default_fixture_loop_scope[m = {test_loop_scope}
+[35mtests/test_set_event_loop.py[m[36m:[m[32m295[m[36m:[m            [1;31masyncio_default_fixture_loop_scope[m = session
+[35mtests/test_set_event_loop.py[m[36m:[m[32m391[m[36m:[m            [1;31masyncio_default_fixture_loop_scope[m = function
+[35mtests/test_simple.py[m[36m:[m[32m24[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_simple.py[m[36m:[m[32m40[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_simple.py[m[36m:[m[32m96[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_skips.py[m[36m:[m[32m9[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_skips.py[m[36m:[m[32m24[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_skips.py[m[36m:[m[32m38[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_skips.py[m[36m:[m[32m53[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_skips.py[m[36m:[m[32m67[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_skips.py[m[36m:[m[32m81[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_skips.py[m[36m:[m[32m95[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
+[35mtests/test_task_cleanup.py[m[36m:[m[32m9[m[36m:[m    pytester.makeini("[pytest]\n[1;31masyncio_default_fixture_loop_scope[m = function")
