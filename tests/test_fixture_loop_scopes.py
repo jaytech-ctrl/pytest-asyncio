@@ -126,3 +126,14 @@ def test_invalid_default_fixture_loop_scope_raises_error(pytester: Pytester):
             "function, class, module, package, session."
         ]
     )
+
+
+def test_default_fixture_loop_scope_is_function(pytester: Pytester):
+    pytester.makepyfile(dedent("""\
+        def test_default_fixture_loop_scope(pytestconfig):
+            assert pytestconfig.getini(
+                "asyncio_default_fixture_loop_scope"
+            ) == "function"
+    """))
+    result = pytester.runpytest()
+    result.assert_outcomes(passed=1)
