@@ -33,6 +33,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Topic :: Software Development :: Testing",
   "Typing :: Typed",
 ]
@@ -42,17 +43,7 @@ dynamic = [
 
 dependencies = [
   "backports-asyncio-runner>=1.1,<2; python_version<'3.11'",
-  "pytest>=8.4,<10",
-  "typing-extensions>=4.12; python_version<'3.13'",
-]
-optional-dependencies.docs = [
-  "sphinx>=5.3",
-  "sphinx-rtd-theme>=1",
-  "sphinx-tabs>=3.5",
-]
-optional-dependencies.testing = [
-  "coverage>=6.2",
-  "hypothesis>=5.7.1",
+  "pytest>=8.4",
 ]
 urls."Bug Tracker" = "https://github.com/pytest-dev/pytest-asyncio/issues"
 urls.Changelog = "https://pytest-asyncio.readthedocs.io/en/stable/reference/changelog.html"
@@ -140,7 +131,7 @@ lint.ignore = [
 ]
 
 [tool.pyproject-fmt]
-max_supported_python = "3.14"
+max_supported_python = "3.15"
 
 [tool.pytest.ini_options]
 python_files = [

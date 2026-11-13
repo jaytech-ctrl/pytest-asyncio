@@ -27,7 +27,6 @@ from collections.abc import (
 )
 from types import AsyncGeneratorType, CoroutineType
 from typing import (
-    TYPE_CHECKING,
     Any,
     Literal,
     ParamSpec,
@@ -59,15 +58,6 @@ if sys.version_info >= (3, 11):
 else:
     from backports.asyncio.runner import Runner
 
-if sys.version_info >= (3, 13):
-    from typing import TypeIs
-else:
-    from typing_extensions import TypeIs
-
-if TYPE_CHECKING:
-    # AbstractEventLoopPolicy is deprecated and scheduled for removal in Python 3.16
-    # Import it for type checking only to avoid raising a DeprecationWarning.
-    from asyncio import AbstractEventLoopPolicy
 
 _ScopeName = Literal["session", "package", "module", "class", "function"]
 _R = TypeVar("_R", bound=Awaitable | AsyncIterable | AsyncIterator)
@@ -272,13 +262,16 @@ def _collect_hook_loop_factories(
     return factories
 
 
+_MATCH_FIXTURE_SCOPE = "fixture-scope"
+
 _DEFAULT_FIXTURE_LOOP_SCOPE_UNSET = """\
 The configuration option "asyncio_default_fixture_loop_scope" is unset.
-The event loop scope for asynchronous fixtures will default to the "fixture" caching \
+The event loop scope for asynchronous fixtures will default to the fixture \
 scope. Future versions of pytest-asyncio will default the loop scope for asynchronous \
 fixtures to "function" scope. Set the default fixture loop scope explicitly in order \
 to avoid unexpected behavior in the future. Valid fixture loop scopes are: \
-"function", "class", "module", "package", "session"
+"function", "class", "module", "package", "session". Set it to "fixture-scope" to \
+keep the current behavior.
 """
 
 
@@ -295,7 +288,10 @@ def _validate_scope(scope: str | None, option_name: str) -> None:
 
 def pytest_configure(config: Config) -> None:
     default_fixture_loop_scope = config.getini("asyncio_default_fixture_loop_scope")
-    _validate_scope(default_fixture_loop_scope, "asyncio_default_fixture_loop_scope")
+    if default_fixture_loop_scope != _MATCH_FIXTURE_SCOPE:
+        _validate_scope(
+            default_fixture_loop_scope, "asyncio_default_fixture_loop_scope"
+        )
     if not default_fixture_loop_scope:
         warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))
 
@@ -382,6 +378,23 @@ def _wrap_sync_fixture(
     return _sync_fixture_wrapper
 
 
+def _cancelled_fixture_error(
+    phase: Literal["setup", "teardown"],
+    request: FixtureRequest,
+) -> PytestAsyncioError:
+    """
+    Return the error to raise instead of a fixture's CancelledError.
+
+    CancelledError is not an Exception subclass, so pytest does not
+    handle it like other fixture errors: it does not cache it as a setup
+    error, and it does not run a node's remaining finalizers after one
+    is raised during teardown.
+    """
+    return PytestAsyncioError(
+        f"The {phase} of async fixture {request.fixturename!r} was cancelled."
+    )
+
+
 AsyncGenFixtureParams = ParamSpec("AsyncGenFixtureParams")
 AsyncGenFixtureYieldType = TypeVar("AsyncGenFixtureYieldType")
 
@@ -405,7 +418,10 @@ def _wrap_asyncgen_fixture(
             return res
 
         context = contextvars.copy_context()
-        result = runner.run(setup(), context=context)
+        try:
+            result = runner.run(setup(), context=context)
+        except asyncio.CancelledError as e:
+            raise _cancelled_fixture_error("setup", request) from e
 
         reset_contextvars = _apply_contextvar_changes(context)
 
@@ -422,9 +438,13 @@ def _wrap_asyncgen_fixture(
                     msg += "Yield only once."
                     raise ValueError(msg)
 
-            runner.run(async_finalizer(), context=context)
-            if reset_contextvars is not None:
-                reset_contextvars()
+            try:
+                runner.run(async_finalizer(), context=context)
+            except asyncio.CancelledError as e:
+                raise _cancelled_fixture_error("teardown", request) from e
+            finally:
+                if reset_contextvars is not None:
+                    reset_contextvars()
 
         request.addfinalizer(finalizer)
         return result
@@ -453,7 +473,10 @@ def _wrap_async_fixture(
             return res
 
         context = contextvars.copy_context()
-        result = runner.run(setup(), context=context)
+        try:
+            result = runner.run(setup(), context=context)
+        except asyncio.CancelledError as e:
+            raise _cancelled_fixture_error("setup", request) from e
 
         # Copy the context vars modified by the setup task into the current
         # context, and (if needed) add a finalizer to reset them.
@@ -582,7 +605,7 @@ class PytestAsyncioFunction(Function):
         marker = self.get_closest_marker("asyncio")
         assert marker is not None
         default_loop_scope = _get_default_test_loop_scope(self.config)
-        loop_scope = marker.kwargs.get("loop_scope") or marker.kwargs.get("scope")
+        loop_scope, _ = _parse_asyncio_marker(marker, self.nodeid)
         if loop_scope is None:
             return default_loop_scope
         else:
@@ -735,17 +758,20 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     asyncio_marker = _resolve_asyncio_marker(metafunc.definition)
     if asyncio_marker is None:
         return
+    nodeid = metafunc.definition.nodeid
     marker_loop_scope, marker_selected_factory_names = _parse_asyncio_marker(
-        asyncio_marker
+        asyncio_marker,
+        nodeid,
     )
 
     hook_factories = _collect_hook_loop_factories(metafunc.config, metafunc.definition)
     if hook_factories is None:
         if marker_selected_factory_names is not None:
-            raise pytest.UsageError(
-                "mark.asyncio 'loop_factories' requires at least one "
+            msg = (
+                f"{nodeid}: mark.asyncio 'loop_factories' requires at least one "
                 "pytest_asyncio_loop_factories hook implementation."
             )
+            pytest.fail(msg, pytrace=False)
         return
 
     factory_params: Collection[object]
@@ -777,8 +803,7 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     metafunc.fixturenames.append(_asyncio_loop_factory.__name__)
     default_loop_scope = _get_default_test_loop_scope(metafunc.config)
     loop_scope = marker_loop_scope or default_loop_scope
-    # pytest.HIDDEN_PARAM was added in pytest 8.4
-    hide_id = len(factory_ids) == 1 and hasattr(pytest, "HIDDEN_PARAM")
+    hide_id = len(factory_ids) == 1
     metafunc.parametrize(
         _asyncio_loop_factory.__name__,
         factory_params,
@@ -804,39 +829,32 @@ def _temporary_event_loop(loop: AbstractEventLoop) -> Iterator[None]:
         _set_event_loop(old_loop)
 
 
-@contextlib.contextmanager
-def _temporary_event_loop_policy(
-    policy: AbstractEventLoopPolicy,
-) -> Iterator[None]:
-    old_loop_policy = _get_event_loop_policy()
-    _set_event_loop_policy(policy)
-    try:
-        yield
-    finally:
-        _set_event_loop_policy(old_loop_policy)
+# _restore_event_loop_policy is required for Python versions before Python 3.16
+# In Python 3.16, the asyncio policy system is removed and this function degrades
+# to a no-op
+if sys.version_info < (3, 16):
+
+    @contextlib.contextmanager
+    def _restore_event_loop_policy() -> Iterator[None]:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            old_loop_policy = asyncio.get_event_loop_policy()
+        try:
+            yield
+        finally:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", DeprecationWarning)
+                asyncio.set_event_loop_policy(old_loop_policy)
+
+else:
+
+    _restore_event_loop_policy = contextlib.nullcontext
 
 
-def _get_event_loop_policy() -> AbstractEventLoopPolicy:
+def _get_event_loop_no_warn() -> asyncio.AbstractEventLoop:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", DeprecationWarning)
-        return asyncio.get_event_loop_policy()
-
-
-def _set_event_loop_policy(policy: AbstractEventLoopPolicy) -> None:
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", DeprecationWarning)
-        asyncio.set_event_loop_policy(policy)
-
-
-def _get_event_loop_no_warn(
-    policy: AbstractEventLoopPolicy | None = None,
-) -> asyncio.AbstractEventLoop:
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", DeprecationWarning)
-        if policy is not None:
-            return policy.get_event_loop()
-        else:
-            return asyncio.get_event_loop()
+        return asyncio.get_event_loop()
 
 
 def _set_event_loop(loop: AbstractEventLoop | None) -> None:
@@ -860,22 +878,13 @@ def pytest_pyfunc_call(pyfuncitem: Function) -> object | None:
                     and _is_coroutine_or_asyncgen(func)
                     and not _is_asyncio_fixture_function(func)
                 ):
-                    warnings.warn(
-                        PytestDeprecationWarning(
-                            f"asyncio test {pyfuncitem.name!r} requested async "
-                            "@pytest.fixture "
-                            f"{fixname!r} in strict mode. "
-                            "You might want to use @pytest_asyncio.fixture or switch "
-                            "to auto mode. "
-                            "This will become an error in future versions of "
-                            "pytest-asyncio."
-                        ),
-                        stacklevel=1,
+                    raise pytest.UsageError(
+                        f"asyncio test {pyfuncitem.name!r} requested async "
+                        "@pytest.fixture "
+                        f"{fixname!r} in strict mode. "
+                        "You might want to use @pytest_asyncio.fixture or switch "
+                        "to auto mode. "
                     )
-                    # no stacklevel points at the users code, so we set stacklevel=1
-                    # so it at least indicates that it's the plugin complaining.
-                    # Pytest gives the test file & name in the warnings summary at least
-
         else:
             pyfuncitem.warn(
                 pytest.PytestWarning(
@@ -910,13 +919,6 @@ def _synchronize_coroutine(
 
 @pytest.hookimpl(wrapper=True)
 def pytest_fixture_setup(fixturedef: FixtureDef, request) -> object | None:
-    if (
-        fixturedef.argname == "event_loop_policy"
-        and fixturedef.func.__module__ != __name__
-    ):
-        warnings.warn(
-            PytestDeprecationWarning(_EVENT_LOOP_POLICY_FIXTURE_DEPRECATION_WARNING),
-        )
     asyncio_mode = _get_asyncio_mode(request.config)
     if not _is_asyncio_fixture_function(fixturedef.func):
         if asyncio_mode == Mode.STRICT:
@@ -926,6 +928,8 @@ def pytest_fixture_setup(fixturedef: FixtureDef, request) -> object | None:
         if not _is_coroutine_or_asyncgen(fixturedef.func):
             return (yield)
     default_loop_scope = request.config.getini("asyncio_default_fixture_loop_scope")
+    if default_loop_scope == _MATCH_FIXTURE_SCOPE:
+        default_loop_scope = fixturedef.scope
     loop_scope = (
         getattr(fixturedef.func, "_loop_scope", None)
         or default_loop_scope
@@ -946,64 +950,49 @@ def pytest_fixture_setup(fixturedef: FixtureDef, request) -> object | None:
     return hook_result
 
 
-_DUPLICATE_LOOP_SCOPE_DEFINITION_ERROR = """\
-An asyncio pytest marker defines both "scope" and "loop_scope", \
-but it should only use "loop_scope".
-"""
-
-_MARKER_SCOPE_KWARG_DEPRECATION_WARNING = """\
-The "scope" keyword argument to the asyncio marker has been deprecated. \
-Please use the "loop_scope" argument instead.
-"""
-
 _INVALID_LOOP_FACTORIES_KWARG = """\
-mark.asyncio 'loop_factories' must be a non-empty sequence of strings.
-"""
-
-_EVENT_LOOP_POLICY_FIXTURE_DEPRECATION_WARNING = """\
-Overriding the "event_loop_policy" fixture is deprecated \
-and will be removed in a future version of pytest-asyncio. \
-Use the "pytest_asyncio_loop_factories" hook to customize event loop creation.\
+mark.asyncio 'loop_factories' must be a non-empty sequence of strings.\
 """
 
 
 def _parse_asyncio_marker(
     asyncio_marker: Mark,
+    nodeid: str,
 ) -> tuple[_ScopeName | None, Sequence[str] | None]:
     assert asyncio_marker.name == "asyncio"
-    _validate_asyncio_marker(asyncio_marker)
-    if "scope" in asyncio_marker.kwargs:
-        if "loop_scope" in asyncio_marker.kwargs:
-            raise pytest.UsageError(_DUPLICATE_LOOP_SCOPE_DEFINITION_ERROR)
-        warnings.warn(PytestDeprecationWarning(_MARKER_SCOPE_KWARG_DEPRECATION_WARNING))
-    scope = asyncio_marker.kwargs.get("loop_scope") or asyncio_marker.kwargs.get(
-        "scope"
-    )
+    _validate_asyncio_marker(asyncio_marker, nodeid)
+    scope = asyncio_marker.kwargs.get("loop_scope")
     if scope is not None:
-        assert scope in {"function", "class", "module", "package", "session"}
+        valid_scopes = [s.value for s in Scope]
+        if scope not in valid_scopes:
+            msg = (
+                f"{nodeid}: mark.asyncio got an unexpected loop scope value {scope!r}. "
+                f"Valid scopes are: {', '.join(valid_scopes)}."
+            )
+            pytest.fail(msg, pytrace=False)
     marker_value = asyncio_marker.kwargs.get("loop_factories")
     if marker_value is None:
         return scope, None
     if isinstance(marker_value, str) or not isinstance(marker_value, Sequence):
-        raise ValueError(_INVALID_LOOP_FACTORIES_KWARG)
+        pytest.fail(f"{nodeid}: {_INVALID_LOOP_FACTORIES_KWARG}", pytrace=False)
     if not marker_value or any(
         not isinstance(factory_name, str) or not factory_name
         for factory_name in marker_value
     ):
-        raise ValueError(_INVALID_LOOP_FACTORIES_KWARG)
+        pytest.fail(f"{nodeid}: {_INVALID_LOOP_FACTORIES_KWARG}", pytrace=False)
     return scope, marker_value
 
 
-def _validate_asyncio_marker(asyncio_marker: Mark) -> None:
+def _validate_asyncio_marker(asyncio_marker: Mark, nodeid: str) -> None:
     if asyncio_marker.args or (
         asyncio_marker.kwargs
-        and set(asyncio_marker.kwargs) - {"loop_scope", "scope", "loop_factories"}
+        and set(asyncio_marker.kwargs) - {"loop_scope", "loop_factories"}
     ):
         msg = (
-            "mark.asyncio accepts only keyword arguments 'loop_scope' and"
+            f"{nodeid}: mark.asyncio accepts only keyword arguments 'loop_scope' and"
             " 'loop_factories'."
         )
-        raise ValueError(msg)
+        pytest.fail(msg, pytrace=False)
 
 
 def _get_default_test_loop_scope(config: Config) -> Any:
@@ -1027,13 +1016,11 @@ def _create_scoped_runner_fixture(scope: _ScopeName) -> Callable:
         name=f"_{scope}_scoped_runner",
     )
     def _scoped_runner(
-        event_loop_policy,
         _asyncio_loop_factory,
         request: FixtureRequest,
     ) -> Iterator[Runner]:
-        new_loop_policy = event_loop_policy
         debug_mode = _get_asyncio_debug(request.config)
-        with _temporary_event_loop_policy(new_loop_policy):
+        with _restore_event_loop_policy():
             runner = Runner(
                 debug=debug_mode,
                 loop_factory=_asyncio_loop_factory,
@@ -1074,13 +1061,7 @@ def _asyncio_loop_factory(request: FixtureRequest) -> LoopFactory | None:
     return getattr(request, "param", None)
 
 
-@pytest.fixture(scope="session", autouse=True)
-def event_loop_policy() -> AbstractEventLoopPolicy:
-    """Return an instance of the policy used to create asyncio event loops."""
-    return _get_event_loop_policy()
-
-
-def is_async_test(item: Item) -> TypeIs[PytestAsyncioFunction]:
+def is_async_test(item: Item) -> bool:
     """Returns whether a test item is a pytest-asyncio test"""
     return isinstance(item, PytestAsyncioFunction)
 
